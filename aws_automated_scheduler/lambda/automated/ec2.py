@@ -157,7 +157,6 @@ class EC2:
             response = self.__stop_instance(instance_id)
 
         state_changed = self.__was_instances_state_changed(action, response)
-        print(f"STATE CHANGED: {state_changed}")
 
         return state_changed
 
@@ -230,6 +229,11 @@ class EC2:
         elif action == ec2_actions.START:
             current_state = instance_api_response.get('StartingInstances')[0].get('CurrentState')
             previous_state = instance_api_response.get('StartingInstances')[0].get('PreviousState')
+
+        if current_state != previous_state:
+            logger.info(f"Instance changed states from {previous_state} to {current_state}.")
+        else:
+            logger.info(f"Instance desired state {action} was already in state {previous_state['Name']}")
 
         return current_state != previous_state
 

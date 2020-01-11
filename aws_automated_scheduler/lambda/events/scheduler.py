@@ -69,12 +69,16 @@ class Scheduler:
         #     evaluator = util.evalperiod.EvalPeriod()
         #     self.__evaluate_instances(instance_list, evaluator)
 
+        changed_instances = []
+
         # Only evaluate instances if we found any to evaluate
         if instance_list:
             evaluator = util.evalperiod.EvalPeriod()
-            self.__evaluate_instances(instance_list, evaluator)
+            changed_instances = self.__evaluate_instances(instance_list, evaluator)
 
         logger.info(f"No more instances found in region [{self._region}] with tag name [{self._tag_key}]")
+        logger.info(f"--------------------------------")
+        logger.info(f"Final results of instances that changed state:\n{changed_instances}")
 
         found_errors = self.retrieve_errors_from_components()
         if found_errors:
@@ -173,7 +177,7 @@ class Scheduler:
 
             logger.info(f"Finished evaluating InstanceId: [{instance_id}], [{len(instance_list) - index}] remaining.")
             logger.info(f"--------------------------------")
-            logger.info(f"Final results of instances that changed state:\n{instances_with_changed_status}")
+            return instances_with_changed_status
 
     def retrieve_errors_from_components(self):
         """
