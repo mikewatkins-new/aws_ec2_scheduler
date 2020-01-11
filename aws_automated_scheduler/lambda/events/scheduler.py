@@ -105,6 +105,8 @@ class Scheduler:
 
         # TODO break this function up into less responsibility
 
+        instances_with_changed_status = []
+
         # Reach out to dynamoDB to check if any of the intstance automation tag values have information
         for index, instance in enumerate(instance_list, start=1):
             instance_id = instance['instance_id']
@@ -164,10 +166,14 @@ class Scheduler:
             if self.__testing:
                 logger.info(f"Using local (not real) EC2: Performing action type [{action_type}] on [{instance_id}]")
             else:
-                self.__ec2.perform_action(action_type, instance_id)
+                instance_changed = self.__ec2.perform_action(action_type, instance_id)
+                if instance_changed:
+                    instances_with_changed_status.append((instance_id, action_type))
+                # self.was_instances_state_changed(action_type, instance_api_response)
 
             logger.info(f"Finished evaluating InstanceId: [{instance_id}], [{len(instance_list) - index}] remaining.")
             logger.info(f"--------------------------------")
+            logger.info(f"Final results of instances that changed state:\n{instances_with_changed_status}")
 
     def retrieve_errors_from_components(self):
         """

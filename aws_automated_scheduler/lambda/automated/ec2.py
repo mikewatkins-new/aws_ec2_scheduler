@@ -140,19 +140,31 @@ class EC2:
 
         return tag_value
 
-    def perform_action(self, action: str, instance_id: str) -> None:
+    def perform_action(self, action: str, instance_id: str) -> dict:
         """
         :param action:
         :param instance_id:
         """
         logger.info(f"Received call to perform action [{action}] on [{instance_id}]")
 
+        response = None
+
         if action is ec2_actions.START:
             logger.info(f"Starting instance [{instance_id}]...")
-            self.__start_instance(instance_id)
+            response = self.__start_instance(instance_id)
         elif action is ec2_actions.STOP:
             logger.info(f"Stopping instance [{instance_id}]...")
-            self.__stop_instance(instance_id)
+            response = self.__stop_instance(instance_id)
+
+        state_changed = self.__was_instances_state_changed(action, response)
+        print(f"STATE CHANGED: {state_changed}")
+
+        return state_changed
+
+    # TODO: Ran into this situation
+    # 2020-01-11 22:47:52,454 [ERROR] Problem starting instance i-00a9e45169fcb0651: An error occurred (IncorrectInstanceState)
+    # when calling the StartInstances operation: The instance 'i-00a9e45169fcb0651' is not in a state from which it can be started.
+    # I want to log the error, but not cause a fatal response
 
     def __start_instance(self, instance_id: str):
         """
@@ -177,10 +189,7 @@ class EC2:
                 logger.error(f"Problem starting instance {instance_id}: {err}")
                 raise automated.exceptions.ClientError(err)
 
-        if response:
-            logger.info(response)
-
-        # return successful
+        return response
 
     def __stop_instance(self, instance_id: str):
         """
@@ -208,10 +217,21 @@ class EC2:
                 logger.error(f"Unable to perform action <stop> on {instance_id} - Unable to find the instance.")
             else:
                 raise automated.exceptions.ClientError(err)
-        if response:
-            logger.info(response)
 
-        # return successful
+        return response
+
+    def __was_instances_state_changed(self, action, instance_api_response):
+        # Assumption that we are only stopping one instance at a time, if we end up starting/stopping
+        # multiple then we will have to rework the logic to return the status code along with the instance
+        # or change the logic otherwise to receive the single response and return result
+        if action == ec2_actions.STOP:
+            current_state = instance_api_response.get('StoppingInstances')[0].get('CurrentState')
+            previous_state = instance_api_response.get('StoppingInstances')[0].get('PreviousState')
+        elif action == ec2_actions.START:
+            current_state = instance_api_response.get('StartingInstances')[0].get('CurrentState')
+            previous_state = instance_api_response.get('StartingInstances')[0].get('PreviousState')
+
+        return current_state != previous_state
 
     # TESTING ONLY
     def __testing_return_mock_ec2_instances(self) -> list:
