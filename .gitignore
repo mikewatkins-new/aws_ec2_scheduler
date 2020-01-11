@@ -5,6 +5,7 @@ __pycache*
 .virtualenv
 *.egg-info
 .idea
+!cdk*.json
 *.json
 *.log
 
