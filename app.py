@@ -2,10 +2,10 @@
 
 from aws_cdk import core
 
-from aws_automated_scheduler.aws_automated_scheduler_stack import AwsAutomatedSchedulerStack
+from aws_automated_scheduler.automated_scheduler_stack import AutomatedSchedulerStack
 
 
 app = core.App()
-AwsAutomatedSchedulerStack(app, "aws-automated-scheduler")
+AutomatedSchedulerStack(app, "automated-scheduler", env=core.Environment(account="dev",   region="us-west-2"))
 
 app.synth()

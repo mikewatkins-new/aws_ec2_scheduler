@@ -11,7 +11,7 @@ REGION = "us-west-2"
 LAMBDA_FUNC_PATH = 'aws_automated_scheduler/lambda'
 
 
-class AwsAutomatedSchedulerStack(core.Stack):
+class AutomatedSchedulerStack(core.Stack):
     """
     Setup stack for automated scheduler
     """
