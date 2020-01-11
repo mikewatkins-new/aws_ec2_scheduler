@@ -1,0 +1,10 @@
+__pycache*
+.pytest*
+.env
+.venv
+.virtualenv
+*.egg-info
+.idea
+*.json
+*.log
+

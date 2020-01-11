@@ -1,0 +1,3 @@
+NONE = None
+START = "START"
+STOP = "STOP"
