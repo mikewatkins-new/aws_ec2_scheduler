@@ -83,7 +83,7 @@ class S3:
         else:
 
             obj = self._s3.Object(bucket, object_key)
-            file_content = obj.get()['Body'].read()
+            file_content = obj.get()['Body'].read().decode('utf-8')
             print(file_content)
 
             response = self._s3.get_object(Bucket=bucket, Key=object_key)

@@ -40,7 +40,7 @@ class AutomatedSchedulerStack(core.Stack):
             self, "AutomatedScheduler",
             code=_lambda.Code.from_asset(LAMBDA_FUNC_PATH),
             runtime=_lambda.Runtime.PYTHON_3_7,
-            handler="aws_scheduler.event_handler",
+            handler="automated_scheduler.event_handler",
             memory_size=256,
             timeout=core.Duration.seconds(5)
         )
@@ -73,7 +73,18 @@ class AutomatedSchedulerStack(core.Stack):
             ]
         )
 
+        s3_read_only = iam.PolicyStatement(
+            actions=[
+                "s3:GetObject",
+            ],
+            effect=iam.Effect.ALLOW,
+            resources=[
+                "*"
+            ]
+        )
+
         lambda_handler.add_to_role_policy(ec2_read_only)
+        lambda_handler.add_to_role_policy(s3_read_only)
 
     #  rule = events.Rule(
     #      self,
