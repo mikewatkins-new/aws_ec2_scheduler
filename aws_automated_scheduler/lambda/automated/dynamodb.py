@@ -303,9 +303,10 @@ class DynamoDB:
         except botocore.exceptions.ClientError as err:
             automated.exceptions.log_error(
                 automation_component=self,
-                error_message=str(err),
+                error_message=f"While attempting to retrieve period information from DynamoDB. {str(err)}",
                 output_to_logger=True,
                 include_in_http_response=True,
+                http_status_code=err.response.get('ResponseMetadata').get('HTTPStatusCode'),
                 fatal_error=True
             )
             # raise automated.exceptions.ClientError(err)

@@ -1,10 +1,14 @@
-
 # AWS Automated Instance Scheduler
 
 ## Description
 
 Starts/stops instances as appropriate using AWS tags as scheduling to tags based on scheduling configurations.
 
+## Requirements
+* Appropriate AWS access to create and configure the resources required
+* Python >= 3.7
+* pip (For installing Python requirements)
+* Node.js >= 10.3.0 (For running AWS CDK)
 
 ## Resources created
 
@@ -15,8 +19,19 @@ This application creates the following resources:
 
 ## Usage
 
-This application leveerages AWS CDK for stack creation and deployment. To initialize the application
+This application leverages AWS CDK for stack creation and deployment. Node.js must be installed prior to using CDK.
+        
+https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html
 
+Once the appropriate version of Node.js is installed AWS CDK can be installed via  
+```
+npm install -g aws-cdk
+```        
+Installation can be verified by
+```
+cdk --version
+```
+After CDK installation is complete. Configure the Python virtual environment.        
 ```
 $ python3 -m venv .env
 ```

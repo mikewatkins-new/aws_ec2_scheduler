@@ -57,5 +57,5 @@ def event_handler(event, context) -> dict:
 # TESTING: For local testing launch point
 
 if __name__ == '__main__':
-    # event_handler({'detail-type': 'Scheduled Event'}, {})
-    event_handler({'detail-type' : 'AWS API Call via CloudTrail', 'detail': {'eventName': 'PutObject'}}, {})
+    event_handler({'detail-type': 'Scheduled Event'}, {})
+    # event_handler({'detail-type' : 'AWS API Call via CloudTrail', 'detail': {'eventName': 'PutObject'}}, {})
