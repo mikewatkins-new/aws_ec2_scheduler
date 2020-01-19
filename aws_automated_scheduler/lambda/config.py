@@ -6,7 +6,7 @@ VERBOSE_LOGGING = True
 
 # TESTING_EVENT = events.type.API_RETRIEVE_DYNAMO_AS_CONFIG
 # TESTING_EVENT = events.type.API_S3_PUT_CONFIG
-# TESTING_EVENT = events.type.CW_SCHEDULED_EVENT
+TESTING_EVENT = events.type.CW_SCHEDULED_EVENT
 
 USE_PRETTY_JSON = True
 
@@ -32,8 +32,7 @@ def is_test_run() -> bool:
     try:
         if TESTING_EVENT:
             testing = True
-    except AttributeError:
-        pass
     except NameError:
         pass
+
     return testing

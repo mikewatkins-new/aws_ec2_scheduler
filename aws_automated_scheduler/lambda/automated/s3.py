@@ -79,16 +79,10 @@ class S3:
             with open(object_key, 'r') as f:
                 file_content = f.read()
 
-        # TODO: See which one works better.
         else:
 
             obj = self._s3.Object(bucket, object_key)
             file_content = obj.get()['Body'].read().decode('utf-8')
-            print(file_content)
-
-            response = self._s3.get_object(Bucket=bucket, Key=object_key)
-            file_content = response['Body'].read().decode('utf-8')
-            print(file_content)
 
         return file_content
 

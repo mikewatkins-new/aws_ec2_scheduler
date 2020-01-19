@@ -2,8 +2,8 @@ NOT_FOUND = 404
 OK = 200
 INTERNAL_ERROR = 500
 
-def construct_http_response(status_code, message) -> dict:
-    # Handle any errors or response manipulations here.
+
+def construct_http_response(status_code: str, message: list) -> dict:
 
     # Message is being passed as a string, no reason to serialize it?
     # message = json.loads(message)

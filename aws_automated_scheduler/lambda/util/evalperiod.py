@@ -28,7 +28,6 @@ class EvalPeriod:
     def errors(self):
         return self._errors
 
-
     def eval_period(self, period, override_time: datetime = None) -> str:
 
         """

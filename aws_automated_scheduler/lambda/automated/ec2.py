@@ -18,7 +18,7 @@ class EC2:
         self._region = region
         self.__ec2_conn = ec2_conn
         self.__ec2 = client("ec2", region_name=self._region)
-        self._testing = config.is_test_run()
+        self._test_run = config.is_test_run()
         self.__errors = []
 
     @property
@@ -35,32 +35,39 @@ class EC2:
 
     def get_instances_from_tag_key(self, tag_key: str) -> list:
         """
-        Gets instance id's from EC2 instances tagged with AWS automated scheduler defined automation tag only
+        Retrieve instance id's from EC2 instances tagged with AWS automated scheduler defined automation tag only
         :param tag_key: str = The tag key to filter ec2 results on
         :return list = collection of instances and associated tag values retrieved from them
         """
-        instance_id_list: list = []
 
-        # TESTING: simulated ec2 instances returned with data structure as real
-        if self._testing:
-            return self.__testing_return_mock_ec2_instances()
+        if not self._test_run:
+            paginated_instances = self._retrieve_all_instances_with_tag_key(tag_key=tag_key)
+            instance_id_list: list = self._retrieve_instance_id_and_schedule_tag_info(
+                paginated_instances=paginated_instances,
+                tag_key=tag_key
+            )
+        else:
+            instance_id_list: list = self.__testing_get_mock_ec2_instances()
 
+        return instance_id_list
+
+    def _retrieve_all_instances_with_tag_key(self, tag_key: str):
         ec2_paginator = self.__ec2.get_paginator('describe_instances')
-
-        # This should be an iterable object that it returns that we can iterate over on subsequent calls
         ec2_iterator = None
 
-        logger.info(f"Looking for instances with tag: '{tag_key}'")
-        # Only return instances that have the automation scheduling tag in them
+        logger.info(f"Looking for all instances in '{self._region} with tag: '{tag_key}'")
+
+        query_filter = {
+            "Filters": [
+                {
+                    "Name": "tag-key",
+                    "Values": [tag_key]
+                }
+            ]
+        }
+
         try:
-            ec2_iterator = ec2_paginator.paginate(
-                Filters=[
-                    {
-                        "Name": "tag-key",
-                        "Values": [tag_key]
-                    }
-                ]
-            )
+            ec2_iterator = ec2_paginator.paginate(**query_filter)
 
         except botocore.exceptions.ParamValidationError as err:
             automated.exceptions.log_error(
@@ -71,19 +78,16 @@ class EC2:
                 fatal_error=True
             )
 
-        # TODO Test the iterator so we can actually handle instances over the single retrieval cap
-        # Logging this because I want to see what happens when we exceed the first batch of return instances
-        # So I can add proper pagination logic
-        logger.info(f"Paginator response: {ec2_iterator.build_full_result()}")
-        logger.info(f"Paginator response: {ec2_iterator.result_key_iters()}")
+        return ec2_iterator
 
-        # TODO: Might consider using the following to give me full ec2 response for contract testing
-        # import json
-        # json_format = json.dumps(ec2_iterator.build_full_result(), indent=2, sort_keys=True, default=str)
+    def _retrieve_instance_id_and_schedule_tag_info(self, paginated_instances, tag_key) -> list:
+        instance_id_list: list = []
 
-        # TODO Add pagination logic, and discover proper override tag usage
-        # Drill down to get the instance id, the value of the schedule tag and check override tag
-        for results in ec2_iterator:
+        # CODE REVIEW: Is there a more performant way to do this? Each iteration is a little slow and would cause
+        # a linear decrease in speed with n number of instances. Is it because we are calling describe tags twice
+        # for each instance?
+
+        for results in paginated_instances:
             for reservations in results['Reservations']:
                 for instance in reservations['Instances']:
                     tag_value = self.get_tag_value(instance['InstanceId'], tag_key)
@@ -110,8 +114,6 @@ class EC2:
 
         tag_value = None
 
-        # TODO: Give this one a shot. If we can get this to work, we can make queries independent of
-        # describe action, so we can reuse this function, just passing a resource type and resource id
         query = {
             "Filters": [
                 {
@@ -122,15 +124,8 @@ class EC2:
         }
 
         # It seems that boto3.resource.ec2.describe_tags can not use multiple filters or I would filter on the
-        # instance and the tag itself. Instead, filter of the instance id, then retrieve the tag from it
+        # instance and the tag itself. Instead, filter off the instance id, then retrieve the tag from it
         tags = self.__ec2.describe_tags(**query)
-        #     Filters=[
-        #         {
-        #             "Name": "resource-id",
-        #             "Values": [resource_id]
-        #         }
-        #     ]
-        # )
 
         # Find our scheduling tag and get the value of the [key: value] pair
         # Since we only filters on instance type, we have to loop through all the tags to find the one we want
@@ -140,7 +135,41 @@ class EC2:
 
         return tag_value
 
-    def perform_action(self, action: str, instance_id: str) -> dict:
+    def get_tag_value_v2(self, resource_id: str, tag_keys: set) -> set:
+        """
+        Attempt to speed up calls to retrieve tags. Instead of one call for each tag, make it get all tags for one call
+        """
+
+        tag_value = None
+
+        query = {
+            "Filters": [
+                {
+                    "Name": "resource-id",
+                    "Values": [resource_id]
+                }
+            ]
+        }
+
+        # It seems that boto3.resource.ec2.describe_tags can not use multiple filters or I would filter on the
+        # instance and the tag itself. Instead, filter off the instance id, then retrieve the tag from it
+        tags = self.__ec2.describe_tags(**query)
+
+        schedule_value = None
+        override_value = None
+
+        # Find our scheduling tag and get the value of the [key: value] pair
+        # Since we only filters on instance type, we have to loop through all the tags to find the one we want
+        for tag in tags['Tags']:
+            if tag.get('Key') in tag_keys:
+                if tag.get('Key') == "Schedule":
+                    schedule_value = tag.get('Value')
+                elif tag.get('Key') == "override":
+                    override_value = tag.get('Value')
+
+        return set(resource_id, schedule_value, override_value)
+
+    def perform_action(self, action: str, instance_id: str) -> bool:
         """
         :param action:
         :param instance_id:
@@ -148,6 +177,7 @@ class EC2:
         logger.info(f"Received call to perform action [{action}] on [{instance_id}]")
 
         response = None
+        state_changed = False
 
         if action is ec2_actions.START:
             logger.info(f"Starting instance [{instance_id}]...")
@@ -156,14 +186,15 @@ class EC2:
             logger.info(f"Stopping instance [{instance_id}]...")
             response = self.__stop_instance(instance_id)
 
-        state_changed = self.__was_instances_state_changed(action, response)
+        if response is not None:
+            state_changed = self.__was_instances_state_changed(action, response)
 
         return state_changed
 
     # TODO: Ran into this situation
-    # 2020-01-11 22:47:52,454 [ERROR] Problem starting instance i-00a9e45169fcb0651: An error occurred (IncorrectInstanceState)
-    # when calling the StartInstances operation: The instance 'i-00a9e45169fcb0651' is not in a state from which it can be started.
-    # I want to log the error, but not cause a fatal response
+    # [ERROR] Problem starting instance i-00a9e45169fcb0651: An error occurred (IncorrectInstanceState) when calling
+    # the StartInstances operation: The instance 'i-00a9e45169fcb0651' is not in a state from which it can be started.
+    # I want to log the error, but not cause a fatal response or exception
 
     def __start_instance(self, instance_id: str):
         """
@@ -238,7 +269,7 @@ class EC2:
         return current_state != previous_state
 
     # TESTING ONLY
-    def __testing_return_mock_ec2_instances(self) -> list:
+    def __testing_get_mock_ec2_instances(self) -> list:
         return [
             {"instance_id": "i-007", "tag": "us_hours", "override": None},
             {"instance_id": "i-0049", "tag": "uk_hours", "override": None},

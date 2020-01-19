@@ -86,16 +86,16 @@ def write_json_to_file(input_json, file_name="automated_config.json", use_pretty
     logger.info(f"Writing JSON to [{file_name}]")
     with open(file_name, 'w') as f:
         if use_pretty_json:
-            f.write(get_human_readable_json(input_json))
+            f.write(human_readable_json(input_json))
         else:
-            f.write(get_machine_readable_json(input_json))
+            f.write(machine_readable_json(input_json))
 
 
-def get_human_readable_json(input_json) -> str:
+def human_readable_json(input_json) -> str:
     return json.dumps(input_json, indent=4, sort_keys=True, cls=DynamoEncoder)
 
 
-def get_machine_readable_json(input_json) -> str:
+def machine_readable_json(input_json) -> str:
     return json.dumps(input_json, cls=DynamoEncoder)
 
 

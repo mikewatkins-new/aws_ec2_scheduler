@@ -277,6 +277,9 @@ class DynamoDB:
 
     def retrieve_schedule_info(self, schedule_name: str):
         """
+        Retrieve the periods, timezone attribute from DynamoDB table using pk: [schedule] sk: [tag_value]
+        Ex return: [{'periods': {'period_A', 'periodB', '...'}, 'timezone': 'UTC'}]
+        Note that periods is returned as a set from conversion of dynamodb JSON to python data
         :param schedule_name: str = schedule name as retrieved from AWS scheduler tag value
         :return:
         """
@@ -309,7 +312,6 @@ class DynamoDB:
                 http_status_code=err.response.get('ResponseMetadata').get('HTTPStatusCode'),
                 fatal_error=True
             )
-            # raise automated.exceptions.ClientError(err)
         except botocore.exceptions.EndpointConnectionError as err:
             automated.exceptions.log_error(
                 automation_component=self,
@@ -318,7 +320,6 @@ class DynamoDB:
                 include_in_http_response=True,
                 fatal_error=True
             )
-            raise automated.exceptions.ConnectionError(err)
 
         period_list = None
         periods_with_timezone = []
